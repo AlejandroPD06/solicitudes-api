@@ -1,0 +1,481 @@
+{% extends 'admin/master.html' %}
+
+{% block head_css %}
+{{ super() }}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    body {
+        background: #f8f9fa;
+    }
+
+    .admin-dashboard {
+        padding: 32px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .dashboard-header {
+        margin-bottom: 40px;
+    }
+
+    .dashboard-title {
+        font-size: 32px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .dashboard-subtitle {
+        color: #718096;
+        font-size: 16px;
+        font-weight: 400;
+    }
+
+    .user-info {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        background: white;
+        padding: 12px 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        margin-top: 16px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 16px;
+    }
+
+    .user-details {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: #2d3748;
+        font-size: 14px;
+    }
+
+    .user-role {
+        font-size: 12px;
+        color: #718096;
+        text-transform: capitalize;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        border-color: #cbd5e0;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--gradient-start), var(--gradient-end));
+    }
+
+    .stat-card.primary {
+        --gradient-start: #667eea;
+        --gradient-end: #764ba2;
+    }
+
+    .stat-card.success {
+        --gradient-start: #48bb78;
+        --gradient-end: #38a169;
+    }
+
+    .stat-card.warning {
+        --gradient-start: #ed8936;
+        --gradient-end: #dd6b20;
+    }
+
+    .stat-card.info {
+        --gradient-start: #4299e1;
+        --gradient-end: #3182ce;
+    }
+
+    .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+        color: white;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .stat-content {
+        flex: 1;
+    }
+
+    .stat-label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .stat-value {
+        font-size: 36px;
+        font-weight: 700;
+        color: #2d3748;
+        line-height: 1;
+        margin-bottom: 8px;
+    }
+
+    .stat-detail {
+        font-size: 13px;
+        color: #a0aec0;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+
+    .action-card {
+        background: white;
+        border-radius: 16px;
+        padding: 28px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s;
+    }
+
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .action-icon {
+        font-size: 24px;
+    }
+
+    .action-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    .action-description {
+        color: #718096;
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 20px;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.3s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .action-btn:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+
+    .info-section {
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+    }
+
+    .info-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .info-subtitle {
+        color: #718096;
+        font-size: 14px;
+        margin-bottom: 24px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+    }
+
+    .info-item h6 {
+        font-size: 15px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .info-item ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .info-item li {
+        padding: 8px 0;
+        color: #4a5568;
+        font-size: 14px;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .info-item li:before {
+        content: '→';
+        color: #667eea;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+        .admin-dashboard {
+            padding: 20px;
+        }
+
+        .dashboard-title {
+            font-size: 24px;
+        }
+
+        .stats-grid,
+        .actions-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="admin-dashboard">
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">
+            📊 Dashboard
+        </h1>
+        <p class="dashboard-subtitle">Sistema de Gestión de Solicitudes Internas</p>
+
+        {% if current_user %}
+        <div class="user-info">
+            <div class="user-avatar">
+                {{ current_user.nombre[0] }}{{ current_user.apellido[0] if current_user.apellido else '' }}
+            </div>
+            <div class="user-details">
+                <span class="user-name">{{ current_user.nombre_completo }}</span>
+                <span class="user-role">{{ current_user.rol }}</span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card primary">
+            <div class="stat-header">
+                <div class="stat-content">
+                    <div class="stat-label">Total Usuarios</div>
+                    <div class="stat-value">{{ total_usuarios }}</div>
+                    <div class="stat-detail">Registrados en el sistema</div>
+                </div>
+                <div class="stat-icon">👥</div>
+            </div>
+        </div>
+
+        <div class="stat-card success">
+            <div class="stat-header">
+                <div class="stat-content">
+                    <div class="stat-label">Solicitudes</div>
+                    <div class="stat-value">{{ total_solicitudes }}</div>
+                    <div class="stat-detail">Total de solicitudes</div>
+                </div>
+                <div class="stat-icon">📋</div>
+            </div>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-header">
+                <div class="stat-content">
+                    <div class="stat-label">Pendientes</div>
+                    <div class="stat-value">{{ solicitudes_pendientes }}</div>
+                    <div class="stat-detail">Requieren aprobación</div>
+                </div>
+                <div class="stat-icon">⏳</div>
+            </div>
+        </div>
+
+        <div class="stat-card info">
+            <div class="stat-header">
+                <div class="stat-content">
+                    <div class="stat-label">Notificaciones</div>
+                    <div class="stat-value">{{ total_notificaciones }}</div>
+                    <div class="stat-detail">
+                        {% if notificaciones_pendientes > 0 %}
+                            {{ notificaciones_pendientes }} pendientes
+                        {% else %}
+                            Todas enviadas ✓
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="stat-icon">📧</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions-grid">
+        <div class="action-card">
+            <div class="action-header">
+                <span class="action-icon">👥</span>
+                <h3 class="action-title">Usuarios</h3>
+            </div>
+            <p class="action-description">
+                Administra usuarios, roles y permisos del sistema. Controla el acceso y gestiona cuentas.
+            </p>
+            <a href="{{ url_for('usuarios_admin.index_view') }}" class="action-btn">
+                Ver Usuarios →
+            </a>
+        </div>
+
+        <div class="action-card">
+            <div class="action-header">
+                <span class="action-icon">📋</span>
+                <h3 class="action-title">Solicitudes</h3>
+            </div>
+            <p class="action-description">
+                Revisa, aprueba o rechaza solicitudes internas. Gestiona el flujo de trabajo completo.
+            </p>
+            <a href="{{ url_for('solicitudes_admin.index_view') }}" class="action-btn">
+                Ver Solicitudes →
+            </a>
+        </div>
+
+        <div class="action-card">
+            <div class="action-header">
+                <span class="action-icon">📧</span>
+                <h3 class="action-title">Notificaciones</h3>
+            </div>
+            <p class="action-description">
+                Monitorea el estado de las notificaciones por email y gestiona reintentos si es necesario.
+            </p>
+            <a href="{{ url_for('notificaciones_admin.index_view') }}" class="action-btn">
+                Ver Notificaciones →
+            </a>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h4 class="info-title">💡 Guía Rápida</h4>
+        <p class="info-subtitle">Funcionalidades principales del sistema</p>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <h6>👥 Gestión de Usuarios</h6>
+                <ul>
+                    <li>Crear y editar usuarios</li>
+                    <li>Asignar roles y permisos</li>
+                    <li>Activar o desactivar cuentas</li>
+                    <li>Ver historial de actividad</li>
+                </ul>
+            </div>
+
+            <div class="info-item">
+                <h6>📋 Gestión de Solicitudes</h6>
+                <ul>
+                    <li>Ver todas las solicitudes</li>
+                    <li>Aprobar o rechazar</li>
+                    <li>Cambiar estados y prioridades</li>
+                    <li>Filtrar y buscar solicitudes</li>
+                </ul>
+            </div>
+
+            <div class="info-item">
+                <h6>📧 Sistema de Notificaciones</h6>
+                <ul>
+                    <li>Monitorear envíos de email</li>
+                    <li>Ver notificaciones pendientes</li>
+                    <li>Revisar intentos fallidos</li>
+                    <li>Configurar recordatorios</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

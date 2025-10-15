@@ -1,0 +1,324 @@
+{% extends "frontend/base.html" %}
+
+{% block title %}{{ solicitud.titulo }} - Portal de Solicitudes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 14px;
+        margin-bottom: 24px;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .detail-card {
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+    }
+
+    .detail-header {
+        margin-bottom: 28px;
+        padding-bottom: 24px;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .detail-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 16px;
+    }
+
+    .detail-badges {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .badge-pendiente {
+        background: #feebc8;
+        color: #c05621;
+    }
+
+    .badge-aprobada {
+        background: #c6f6d5;
+        color: #2f855a;
+    }
+
+    .badge-rechazada {
+        background: #fed7d7;
+        color: #c53030;
+    }
+
+    .badge-en_proceso {
+        background: #bee3f8;
+        color: #2c5282;
+    }
+
+    .badge-completada {
+        background: #e6fffa;
+        color: #234e52;
+    }
+
+    .priority-badge {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .priority-baja {
+        background: #f0f4f8;
+        color: #5a67d8;
+    }
+
+    .priority-media {
+        background: #fef5e7;
+        color: #c05621;
+    }
+
+    .priority-alta {
+        background: #fff5f5;
+        color: #e53e3e;
+    }
+
+    .priority-urgente {
+        background: #742a2a;
+        color: #fff;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    .info-item {
+        padding: 16px;
+        background: #f7fafc;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .info-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #718096;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+    }
+
+    .info-value {
+        font-size: 15px;
+        font-weight: 600;
+        color: #2d3748;
+    }
+
+    .section {
+        margin-bottom: 32px;
+    }
+
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section-content {
+        color: #4a5568;
+        line-height: 1.8;
+        font-size: 15px;
+        padding: 16px;
+        background: #f7fafc;
+        border-radius: 10px;
+        border-left: 4px solid #667eea;
+    }
+
+    .timeline {
+        position: relative;
+        padding-left: 32px;
+    }
+
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 8px;
+        bottom: 8px;
+        width: 2px;
+        background: #e2e8f0;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+        padding-left: 32px;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: 2px;
+        top: 6px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid #667eea;
+    }
+
+    .timeline-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #4a5568;
+    }
+
+    .timeline-value {
+        font-size: 14px;
+        color: #718096;
+    }
+
+    @media (max-width: 768px) {
+        .detail-card {
+            padding: 24px 20px;
+        }
+
+        .detail-title {
+            font-size: 22px;
+        }
+
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <a href="{{ url_for('frontend.mis_solicitudes') }}" class="back-link">
+        ← Volver a mis solicitudes
+    </a>
+
+    <div class="detail-card">
+        <div class="detail-header">
+            <h1 class="detail-title">{{ solicitud.titulo }}</h1>
+            <div class="detail-badges">
+                <span class="badge badge-{{ solicitud.estado }}">
+                    {{ solicitud.estado.replace('_', ' ').title() }}
+                </span>
+                <span class="priority-badge priority-{{ solicitud.prioridad }}">
+                    {{ solicitud.prioridad.title() }}
+                </span>
+                <span class="badge" style="background: #edf2f7; color: #4a5568;">
+                    {{ solicitud.tipo.replace('_', ' ').title() }}
+                </span>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">📅 Fecha de Creación</div>
+                <div class="info-value">{{ solicitud.created_at.strftime('%d/%m/%Y %H:%M') }}</div>
+            </div>
+
+            {% if solicitud.fecha_requerida %}
+            <div class="info-item">
+                <div class="info-label">⏰ Fecha Requerida</div>
+                <div class="info-value">{{ solicitud.fecha_requerida.strftime('%d/%m/%Y') }}</div>
+            </div>
+            {% endif %}
+
+            {% if solicitud.fecha_aprobacion %}
+            <div class="info-item">
+                <div class="info-label">✓ Fecha de Aprobación</div>
+                <div class="info-value">{{ solicitud.fecha_aprobacion.strftime('%d/%m/%Y %H:%M') }}</div>
+            </div>
+            {% endif %}
+
+            <div class="info-item">
+                <div class="info-label">🆔 ID de Solicitud</div>
+                <div class="info-value">#{{ solicitud.id }}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">📝 Descripción</h2>
+            <div class="section-content">
+                {{ solicitud.descripcion }}
+            </div>
+        </div>
+
+        {% if solicitud.comentarios %}
+        <div class="section">
+            <h2 class="section-title">💬 Comentarios del Aprobador</h2>
+            <div class="section-content" style="border-left-color: {% if solicitud.estado == 'aprobada' %}#48bb78{% elif solicitud.estado == 'rechazada' %}#e53e3e{% else %}#667eea{% endif %};">
+                {{ solicitud.comentarios }}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="section">
+            <h2 class="section-title">📊 Historial</h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-label">Solicitud Creada</div>
+                    <div class="timeline-value">{{ solicitud.created_at.strftime('%d/%m/%Y a las %H:%M') }}</div>
+                </div>
+
+                {% if solicitud.fecha_aprobacion %}
+                <div class="timeline-item">
+                    <div class="timeline-label">
+                        {% if solicitud.estado == 'aprobada' %}
+                            Solicitud Aprobada
+                        {% elif solicitud.estado == 'rechazada' %}
+                            Solicitud Rechazada
+                        {% else %}
+                            Estado Actualizado
+                        {% endif %}
+                    </div>
+                    <div class="timeline-value">{{ solicitud.fecha_aprobacion.strftime('%d/%m/%Y a las %H:%M') }}</div>
+                </div>
+                {% endif %}
+
+                {% if solicitud.estado == 'completada' %}
+                <div class="timeline-item">
+                    <div class="timeline-label">Solicitud Completada</div>
+                    <div class="timeline-value">{{ solicitud.updated_at.strftime('%d/%m/%Y a las %H:%M') }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

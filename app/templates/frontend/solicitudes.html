@@ -1,0 +1,372 @@
+{% extends "frontend/base.html" %}
+
+{% block title %}Mis Solicitudes - Portal de Solicitudes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a202c;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.3s;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    }
+
+    .filters-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 24px;
+    }
+
+    .filters-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 16px;
+        align-items: end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #4a5568;
+    }
+
+    .filter-select {
+        padding: 10px 14px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        outline: none;
+        transition: all 0.2s;
+        background: #f7fafc;
+    }
+
+    .filter-select:focus {
+        border-color: #667eea;
+        background: white;
+    }
+
+    .btn-filter {
+        padding: 10px 20px;
+        background: white;
+        color: #4a5568;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-filter:hover {
+        border-color: #cbd5e0;
+        background: #f7fafc;
+    }
+
+    .solicitudes-grid {
+        display: grid;
+        gap: 16px;
+    }
+
+    .solicitud-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+    .solicitud-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        border-color: #cbd5e0;
+    }
+
+    .solicitud-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        gap: 16px;
+    }
+
+    .solicitud-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+    }
+
+    .solicitud-description {
+        color: #718096;
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 16px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .solicitud-meta {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        color: #718096;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .badge-pendiente {
+        background: #feebc8;
+        color: #c05621;
+    }
+
+    .badge-aprobada {
+        background: #c6f6d5;
+        color: #2f855a;
+    }
+
+    .badge-rechazada {
+        background: #fed7d7;
+        color: #c53030;
+    }
+
+    .badge-en_proceso {
+        background: #bee3f8;
+        color: #2c5282;
+    }
+
+    .badge-completada {
+        background: #e6fffa;
+        color: #234e52;
+    }
+
+    .priority-badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .priority-baja {
+        background: #f0f4f8;
+        color: #5a67d8;
+    }
+
+    .priority-media {
+        background: #fef5e7;
+        color: #c05621;
+    }
+
+    .priority-alta {
+        background: #fff5f5;
+        color: #e53e3e;
+    }
+
+    .priority-urgente {
+        background: #742a2a;
+        color: #fff;
+    }
+
+    .empty-state {
+        background: white;
+        border-radius: 16px;
+        padding: 80px 20px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+    }
+
+    .empty-icon {
+        font-size: 72px;
+        margin-bottom: 16px;
+    }
+
+    .empty-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+    }
+
+    .empty-text {
+        color: #718096;
+        margin-bottom: 24px;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .filters-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .solicitud-header {
+            flex-direction: column;
+        }
+
+        .solicitud-meta {
+            gap: 8px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">
+        📄 Mis Solicitudes
+    </h1>
+    <a href="{{ url_for('frontend.nueva_solicitud') }}" class="btn">
+        ➕ Nueva Solicitud
+    </a>
+</div>
+
+<div class="filters-card">
+    <form method="GET" action="{{ url_for('frontend.mis_solicitudes') }}">
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label">Estado</label>
+                <select class="filter-select" name="estado" onchange="this.form.submit()">
+                    <option value="">Todos los estados</option>
+                    <option value="pendiente" {% if estado_filter == 'pendiente' %}selected{% endif %}>⏳ Pendiente</option>
+                    <option value="aprobada" {% if estado_filter == 'aprobada' %}selected{% endif %}>✅ Aprobada</option>
+                    <option value="rechazada" {% if estado_filter == 'rechazada' %}selected{% endif %}>❌ Rechazada</option>
+                    <option value="en_proceso" {% if estado_filter == 'en_proceso' %}selected{% endif %}>🔄 En Proceso</option>
+                    <option value="completada" {% if estado_filter == 'completada' %}selected{% endif %}>✓ Completada</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">Tipo</label>
+                <select class="filter-select" name="tipo" onchange="this.form.submit()">
+                    <option value="">Todos los tipos</option>
+                    <option value="compra" {% if tipo_filter == 'compra' %}selected{% endif %}>💰 Compra</option>
+                    <option value="mantenimiento" {% if tipo_filter == 'mantenimiento' %}selected{% endif %}>🔧 Mantenimiento</option>
+                    <option value="soporte_tecnico" {% if tipo_filter == 'soporte_tecnico' %}selected{% endif %}>💻 Soporte Técnico</option>
+                    <option value="otro" {% if tipo_filter == 'otro' %}selected{% endif %}>📝 Otro</option>
+                </select>
+            </div>
+
+            {% if estado_filter or tipo_filter %}
+            <a href="{{ url_for('frontend.mis_solicitudes') }}" class="btn-filter">
+                ✕ Limpiar Filtros
+            </a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+{% if solicitudes %}
+    <div class="solicitudes-grid">
+        {% for solicitud in solicitudes %}
+        <div class="solicitud-card" onclick="window.location.href='{{ url_for('frontend.ver_solicitud', id=solicitud.id) }}'">
+            <div class="solicitud-header">
+                <div style="flex: 1;">
+                    <div class="solicitud-title">{{ solicitud.titulo }}</div>
+                    <div class="solicitud-description">{{ solicitud.descripcion }}</div>
+                </div>
+                <span class="badge badge-{{ solicitud.estado }}">
+                    {{ solicitud.estado.replace('_', ' ').title() }}
+                </span>
+            </div>
+
+            <div class="solicitud-meta">
+                <span class="meta-item">
+                    🏷️ {{ solicitud.tipo.replace('_', ' ').title() }}
+                </span>
+                <span class="meta-item">
+                    <span class="priority-badge priority-{{ solicitud.prioridad }}">
+                        {{ solicitud.prioridad }}
+                    </span>
+                </span>
+                <span class="meta-item">
+                    📅 {{ solicitud.created_at.strftime('%d/%m/%Y') }}
+                </span>
+                {% if solicitud.fecha_requerida %}
+                <span class="meta-item">
+                    ⏰ Req: {{ solicitud.fecha_requerida.strftime('%d/%m/%Y') }}
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">No hay solicitudes</div>
+        <div class="empty-text">
+            {% if estado_filter or tipo_filter %}
+                No se encontraron solicitudes con los filtros aplicados.
+            {% else %}
+                Aún no has creado ninguna solicitud.
+            {% endif %}
+        </div>
+        <a href="{{ url_for('frontend.nueva_solicitud') }}" class="btn">
+            ➕ Crear Nueva Solicitud
+        </a>
+    </div>
+{% endif %}
+{% endblock %}
