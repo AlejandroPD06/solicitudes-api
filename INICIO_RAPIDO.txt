@@ -1,0 +1,134 @@
+═══════════════════════════════════════════════════════════════════
+  🚀 INICIO RÁPIDO - Práctica de Validación y Trackeo de Errores
+═══════════════════════════════════════════════════════════════════
+
+📋 NECESITAS 3 TERMINALES ABIERTAS:
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TERMINAL 1: Iniciar API                                         │
+├─────────────────────────────────────────────────────────────────┤
+│ cd /mnt/c/Users/aleja/solicitudes-api                           │
+│ python wsgi.py                                                  │
+│                                                                 │
+│ ✅ Debe mostrar: * Running on http://127.0.0.1:5000            │
+│ ⚠️  NO CIERRES ESTA TERMINAL                                   │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TERMINAL 2: Ver Logs en Tiempo Real                            │
+├─────────────────────────────────────────────────────────────────┤
+│ cd /mnt/c/Users/aleja/solicitudes-api                           │
+│ mkdir -p logs                                                   │
+│ tail -f logs/solicitudes_api.log                               │
+│                                                                 │
+│ ⚠️  DEJA ESTA TERMINAL ABIERTA                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TERMINAL 3: Ejecutar Pruebas                                   │
+├─────────────────────────────────────────────────────────────────┤
+│ OPCIÓN A (Automático):                                         │
+│   cd /mnt/c/Users/aleja/solicitudes-api                         │
+│   ./test_validacion.sh                                         │
+│                                                                 │
+│ OPCIÓN B (Manual - Sigue PRACTICA_AHORA.md):                  │
+│   curl -X POST http://localhost:5000/api/usuarios/registro \   │
+│     -H "Content-Type: application/json" \                      │
+│     -d '{"email":"invalido","password":"12"}'                  │
+└─────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════
+
+📚 ARCHIVOS DE PRÁCTICA:
+
+1. PRACTICA_AHORA.md ⭐ EMPIEZA AQUÍ
+   - 12 ejercicios paso a paso
+   - Desde lo más básico a lo avanzado
+   - Con explicaciones detalladas
+
+2. test_validacion.sh 🤖
+   - Script automatizado
+   - 10 tests listos para ejecutar
+   - Con colores y formato
+
+3. COMO_PRACTICAR.md 📖
+   - Guía completa
+   - Opciones de práctica
+   - Comandos útiles
+
+4. EJEMPLOS_RESPUESTAS_API.md 📊
+   - 11 ejemplos antes/después
+   - Comparaciones visuales
+
+═══════════════════════════════════════════════════════════════════
+
+🎯 EJERCICIOS RÁPIDOS (Terminal 3):
+
+# Error 422 - Email inválido
+curl -X POST http://localhost:5000/api/usuarios/registro \
+  -H "Content-Type: application/json" \
+  -d '{"email":"sin-arroba","password":"123456","nombre":"Juan"}'
+
+# Error 422 - Múltiples errores
+curl -X POST http://localhost:5000/api/usuarios/registro \
+  -H "Content-Type: application/json" \
+  -d '{"email":"invalido","password":"12"}'
+
+# Éxito 201 - Registro correcto
+curl -X POST http://localhost:5000/api/usuarios/registro \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","password":"123456","nombre":"Juan"}'
+
+# Error 409 - Email duplicado (ejecuta 2 veces)
+curl -X POST http://localhost:5000/api/usuarios/registro \
+  -H "Content-Type: application/json" \
+  -d '{"email":"dup@test.com","password":"123456","nombre":"Juan"}'
+
+# Error 401 - Credenciales incorrectas
+curl -X POST http://localhost:5000/api/usuarios/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@test.com","password":"incorrecta"}'
+
+═══════════════════════════════════════════════════════════════════
+
+📊 CÓDIGOS HTTP QUE PRACTICARÁS:
+
+200 ✅ OK               - Login exitoso, GET perfil
+201 ✅ Created          - Registro exitoso
+400 ❌ Bad Request      - JSON mal formado
+401 ❌ Unauthorized     - Credenciales incorrectas
+409 ❌ Conflict         - Email duplicado
+422 ❌ Validation Error - Datos inválidos
+
+═══════════════════════════════════════════════════════════════════
+
+🔍 TRACKEO DE ERRORES:
+
+1. Provoca un error
+2. Copia el "request_id" de la respuesta
+3. Búscalo en los logs:
+
+   grep "request_id_aquí" logs/solicitudes_api.log
+
+4. Ve el contexto completo:
+
+   grep -A 10 -B 10 "request_id_aquí" logs/solicitudes_api.log
+
+═══════════════════════════════════════════════════════════════════
+
+⏱️ TIEMPO ESTIMADO:
+- Inicio rápido (3 terminales): 2 minutos
+- Script automatizado: 5 minutos
+- Práctica manual (12 ejercicios): 30 minutos
+- Desafío final: 15 minutos
+
+═══════════════════════════════════════════════════════════════════
+
+✨ ¡EMPIEZA AHORA!
+
+1. Abre 3 terminales
+2. Sigue las instrucciones de arriba
+3. Lee PRACTICA_AHORA.md para ejercicios detallados
+4. Ejecuta ./test_validacion.sh para ver todo automatizado
+
+═══════════════════════════════════════════════════════════════════

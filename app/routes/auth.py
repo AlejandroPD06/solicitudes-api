@@ -1,7 +1,6 @@
 """Blueprint de autenticación y gestión de usuarios."""
-from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from flasgger import swag_from
+from flask import Blueprint, request
+from flask_jwt_extended import jwt_required
 from app import db
 from app.models.usuario import Usuario
 from app.services.auth_service import (
@@ -12,11 +11,28 @@ from app.services.auth_service import (
     obtener_usuario_actual,
     rol_requerido
 )
+from app.schemas import (
+    UsuarioRegistroSchema,
+    UsuarioLoginSchema,
+    UsuarioUpdateSchema,
+    CambiarPasswordSchema
+)
+from app.utils.validators import validate_request
+from app.utils.responses import success_response, created_response, paginated_response, no_content_response
+from app.exceptions import (
+    UserNotFoundError,
+    UserAlreadyExistsError,
+    InvalidCredentialsError,
+    InsufficientPermissionsError,
+    ValidationError,
+    DatabaseError
+)
 
 auth_bp = Blueprint('auth', __name__)
 
 
 @auth_bp.route('/registro', methods=['POST'])
+@validate_request(UsuarioRegistroSchema)
 def registro():
     """
     Registrar un nuevo usuario
@@ -53,49 +69,16 @@ def registro():
     responses:
       201:
         description: Usuario registrado exitosamente
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: Usuario registrado exitosamente
-            usuario:
-              type: object
-              properties:
-                id:
-                  type: integer
-                email:
-                  type: string
-                nombre:
-                  type: string
-                apellido:
-                  type: string
-                rol:
-                  type: string
-                activo:
-                  type: boolean
-            access_token:
-              type: string
-            refresh_token:
-              type: string
-            token_type:
-              type: string
-              example: Bearer
       400:
-        description: Datos inválidos o email ya registrado
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+        description: JSON inválido o mal formado
+      409:
+        description: El email ya está registrado
+      422:
+        description: Errores de validación en los datos
+      500:
+        description: Error interno del servidor
     """
-    data = request.get_json()
-
-    # Validar campos requeridos
-    campos_requeridos = ['email', 'password', 'nombre']
-    for campo in campos_requeridos:
-        if not data.get(campo):
-            return jsonify({'error': f'El campo {campo} es requerido'}), 400
+    data = request.validated_data
 
     # Registrar usuario
     usuario, error = registrar_usuario(
@@ -107,19 +90,26 @@ def registro():
     )
 
     if error:
-        return jsonify({'error': error}), 400
+        # Lanzar excepción apropiada
+        if 'ya está registrado' in error.lower():
+            raise UserAlreadyExistsError(message=error)
+        else:
+            raise DatabaseError(message=error)
 
     # Crear tokens
     tokens = crear_tokens(usuario)
 
-    return jsonify({
-        'message': 'Usuario registrado exitosamente',
-        'usuario': usuario.to_dict(),
-        **tokens
-    }), 201
+    return created_response(
+        data={
+            'usuario': usuario.to_dict(),
+            **tokens
+        },
+        message='Usuario registrado exitosamente'
+    )
 
 
 @auth_bp.route('/login', methods=['POST'])
+@validate_request(UsuarioLoginSchema)
 def login():
     """
     Iniciar sesión en el sistema
@@ -145,69 +135,32 @@ def login():
     responses:
       200:
         description: Login exitoso
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: Login exitoso
-            usuario:
-              type: object
-              properties:
-                id:
-                  type: integer
-                email:
-                  type: string
-                nombre:
-                  type: string
-                apellido:
-                  type: string
-                rol:
-                  type: string
-                activo:
-                  type: boolean
-            access_token:
-              type: string
-            refresh_token:
-              type: string
-            token_type:
-              type: string
-              example: Bearer
       400:
-        description: Datos inválidos
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+        description: JSON inválido o mal formado
       401:
-        description: Credenciales incorrectas
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+        description: Credenciales incorrectas o usuario inactivo
+      422:
+        description: Errores de validación en los datos
     """
-    data = request.get_json()
-
-    # Validar campos requeridos
-    if not data.get('email') or not data.get('password'):
-        return jsonify({'error': 'Email y password son requeridos'}), 400
+    data = request.validated_data
 
     # Autenticar usuario
     usuario, error = autenticar_usuario(data['email'], data['password'])
 
     if error:
-        return jsonify({'error': error}), 401
+        raise InvalidCredentialsError(message=error)
 
     # Crear tokens
     tokens = crear_tokens(usuario)
 
-    return jsonify({
-        'message': 'Login exitoso',
-        'usuario': usuario.to_dict(),
-        **tokens
-    }), 200
+    return success_response(
+        data={
+            'usuario': usuario.to_dict(),
+            **tokens
+        },
+        message='Login exitoso',
+        status_code=200
+    )
 
 
 @auth_bp.route('/perfil', methods=['GET'])
@@ -223,44 +176,24 @@ def obtener_perfil():
     responses:
       200:
         description: Datos del usuario
-        schema:
-          type: object
-          properties:
-            usuario:
-              type: object
-              properties:
-                id:
-                  type: integer
-                email:
-                  type: string
-                nombre:
-                  type: string
-                apellido:
-                  type: string
-                rol:
-                  type: string
-                activo:
-                  type: boolean
+      401:
+        description: Token JWT inválido o expirado
       404:
         description: Usuario no encontrado
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
     """
     usuario = obtener_usuario_actual()
 
     if not usuario:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
+        raise UserNotFoundError()
 
-    return jsonify({
-        'usuario': usuario.to_dict()
-    }), 200
+    return success_response(
+        data={'usuario': usuario.to_dict()}
+    )
 
 
 @auth_bp.route('/perfil', methods=['PUT'])
 @jwt_required()
+@validate_request(UsuarioUpdateSchema)
 def actualizar_perfil():
     """
     Actualizar perfil del usuario autenticado
@@ -284,48 +217,23 @@ def actualizar_perfil():
     responses:
       200:
         description: Perfil actualizado exitosamente
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: Perfil actualizado exitosamente
-            usuario:
-              type: object
-              properties:
-                id:
-                  type: integer
-                email:
-                  type: string
-                nombre:
-                  type: string
-                apellido:
-                  type: string
-                rol:
-                  type: string
-                activo:
-                  type: boolean
       400:
-        description: Datos inválidos
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+        description: JSON inválido o mal formado
+      401:
+        description: Token JWT inválido o expirado
       404:
         description: Usuario no encontrado
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+      422:
+        description: Errores de validación en los datos
+      500:
+        description: Error al actualizar en base de datos
     """
     usuario = obtener_usuario_actual()
 
     if not usuario:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
+        raise UserNotFoundError()
 
-    data = request.get_json()
+    data = request.validated_data
 
     # Actualizar campos
     if 'nombre' in data:
@@ -335,17 +243,18 @@ def actualizar_perfil():
 
     try:
         db.session.commit()
-        return jsonify({
-            'message': 'Perfil actualizado exitosamente',
-            'usuario': usuario.to_dict()
-        }), 200
+        return success_response(
+            data={'usuario': usuario.to_dict()},
+            message='Perfil actualizado exitosamente'
+        )
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Error al actualizar perfil: {str(e)}'}), 400
+        raise DatabaseError(message='Error al actualizar perfil', details={'error': str(e)})
 
 
 @auth_bp.route('/cambiar-password', methods=['POST'])
 @jwt_required()
+@validate_request(CambiarPasswordSchema)
 def cambiar_password_endpoint():
     """
     Cambiar contraseña del usuario autenticado
@@ -373,37 +282,21 @@ def cambiar_password_endpoint():
     responses:
       200:
         description: Contraseña cambiada exitosamente
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: Contraseña cambiada exitosamente
       400:
-        description: Datos inválidos o contraseña actual incorrecta
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+        description: JSON inválido o mal formado
+      401:
+        description: Token JWT inválido o contraseña actual incorrecta
       404:
         description: Usuario no encontrado
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+      422:
+        description: Errores de validación en los datos
     """
     usuario = obtener_usuario_actual()
 
     if not usuario:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
+        raise UserNotFoundError()
 
-    data = request.get_json()
-
-    # Validar campos requeridos
-    if not data.get('password_actual') or not data.get('password_nueva'):
-        return jsonify({'error': 'password_actual y password_nueva son requeridos'}), 400
+    data = request.validated_data
 
     # Cambiar contraseña
     success, error = cambiar_password(
@@ -413,9 +306,10 @@ def cambiar_password_endpoint():
     )
 
     if error:
-        return jsonify({'error': error}), 400
+        # Si es contraseña incorrecta, usar 401 en lugar de 422
+        raise InvalidCredentialsError(message=error)
 
-    return jsonify({'message': 'Contraseña cambiada exitosamente'}), 200
+    return success_response(message='Contraseña cambiada exitosamente')
 
 
 @auth_bp.route('/usuarios', methods=['GET'])
@@ -451,39 +345,11 @@ def listar_usuarios():
         description: Items por página (máximo 100)
     responses:
       200:
-        description: Lista de usuarios
-        schema:
-          type: object
-          properties:
-            usuarios:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  email:
-                    type: string
-                  nombre:
-                    type: string
-                  apellido:
-                    type: string
-                  rol:
-                    type: string
-                  activo:
-                    type: boolean
-            total:
-              type: integer
-              example: 50
-            pages:
-              type: integer
-              example: 5
-            current_page:
-              type: integer
-              example: 1
-            per_page:
-              type: integer
-              example: 10
+        description: Lista de usuarios con metadata de paginación
+      401:
+        description: Token JWT inválido o expirado
+      403:
+        description: Sin permisos para listar usuarios
     """
     # Obtener parámetros de query
     rol = request.args.get('rol')
@@ -504,13 +370,12 @@ def listar_usuarios():
     # Paginación
     paginacion = query.paginate(page=page, per_page=per_page, error_out=False)
 
-    return jsonify({
-        'usuarios': [usuario.to_dict() for usuario in paginacion.items],
-        'total': paginacion.total,
-        'pages': paginacion.pages,
-        'current_page': page,
-        'per_page': per_page
-    }), 200
+    return paginated_response(
+        items=[usuario.to_dict() for usuario in paginacion.items],
+        total=paginacion.total,
+        page=page,
+        per_page=per_page
+    )
 
 
 @auth_bp.route('/usuarios/<int:usuario_id>', methods=['GET'])
@@ -533,43 +398,25 @@ def obtener_usuario(usuario_id):
     responses:
       200:
         description: Datos del usuario
-        schema:
-          type: object
-          properties:
-            usuario:
-              type: object
-              properties:
-                id:
-                  type: integer
-                email:
-                  type: string
-                nombre:
-                  type: string
-                apellido:
-                  type: string
-                rol:
-                  type: string
-                activo:
-                  type: boolean
+      401:
+        description: Token JWT inválido o expirado
+      403:
+        description: Sin permisos para ver este usuario
       404:
         description: Usuario no encontrado
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
     """
     usuario = Usuario.query.get(usuario_id)
 
     if not usuario:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
+        raise UserNotFoundError()
 
-    return jsonify({'usuario': usuario.to_dict()}), 200
+    return success_response(data={'usuario': usuario.to_dict()})
 
 
 @auth_bp.route('/usuarios/<int:usuario_id>', methods=['PUT'])
 @jwt_required()
 @rol_requerido('administrador')
+@validate_request(UsuarioUpdateSchema)
 def actualizar_usuario(usuario_id):
     """
     Actualizar un usuario (solo para administradores)
@@ -605,48 +452,25 @@ def actualizar_usuario(usuario_id):
     responses:
       200:
         description: Usuario actualizado exitosamente
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: Usuario actualizado exitosamente
-            usuario:
-              type: object
-              properties:
-                id:
-                  type: integer
-                email:
-                  type: string
-                nombre:
-                  type: string
-                apellido:
-                  type: string
-                rol:
-                  type: string
-                activo:
-                  type: boolean
       400:
-        description: Datos inválidos
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+        description: JSON inválido o mal formado
+      401:
+        description: Token JWT inválido o expirado
+      403:
+        description: Sin permisos para actualizar usuarios
       404:
         description: Usuario no encontrado
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+      422:
+        description: Errores de validación en los datos
+      500:
+        description: Error al actualizar en base de datos
     """
     usuario = Usuario.query.get(usuario_id)
 
     if not usuario:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
+        raise UserNotFoundError()
 
-    data = request.get_json()
+    data = request.validated_data
 
     # Actualizar campos
     if 'nombre' in data:
@@ -654,21 +478,19 @@ def actualizar_usuario(usuario_id):
     if 'apellido' in data:
         usuario.apellido = data['apellido']
     if 'rol' in data:
-        if data['rol'] not in ['empleado', 'jefe', 'administrador']:
-            return jsonify({'error': 'Rol inválido'}), 400
         usuario.rol = data['rol']
     if 'activo' in data:
         usuario.activo = data['activo']
 
     try:
         db.session.commit()
-        return jsonify({
-            'message': 'Usuario actualizado exitosamente',
-            'usuario': usuario.to_dict()
-        }), 200
+        return success_response(
+            data={'usuario': usuario.to_dict()},
+            message='Usuario actualizado exitosamente'
+        )
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Error al actualizar usuario: {str(e)}'}), 400
+        raise DatabaseError(message='Error al actualizar usuario', details={'error': str(e)})
 
 
 @auth_bp.route('/usuarios/<int:usuario_id>', methods=['DELETE'])
@@ -689,38 +511,26 @@ def eliminar_usuario(usuario_id):
         required: true
         description: ID del usuario a eliminar
     responses:
-      200:
-        description: Usuario eliminado exitosamente
-        schema:
-          type: object
-          properties:
-            message:
-              type: string
-              example: Usuario eliminado exitosamente
+      204:
+        description: Usuario eliminado exitosamente (sin contenido)
+      401:
+        description: Token JWT inválido o expirado
+      403:
+        description: Sin permisos para eliminar usuarios
       404:
         description: Usuario no encontrado
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
-      400:
-        description: Error al eliminar usuario
-        schema:
-          type: object
-          properties:
-            error:
-              type: string
+      500:
+        description: Error al eliminar en base de datos
     """
     usuario = Usuario.query.get(usuario_id)
 
     if not usuario:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
+        raise UserNotFoundError()
 
     try:
         db.session.delete(usuario)
         db.session.commit()
-        return jsonify({'message': 'Usuario eliminado exitosamente'}), 200
+        return no_content_response()
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Error al eliminar usuario: {str(e)}'}), 400
+        raise DatabaseError(message='Error al eliminar usuario', details={'error': str(e)})

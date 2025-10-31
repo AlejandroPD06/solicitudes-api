@@ -35,6 +35,71 @@ def reset_db():
     print("Base de datos reseteada!")
 
 
+@cli.command("migrate-notifications")
+def migrate_notifications():
+    """Migrar tabla de notificaciones para soportar in-app notifications."""
+    from sqlalchemy import text
+    print("Migrando tabla de notificaciones...")
+
+    try:
+        # Ejecutar ALTER TABLE para agregar nuevas columnas
+        with db.engine.connect() as conn:
+            conn.execute(text("""
+                ALTER TABLE notificaciones
+                ADD COLUMN IF NOT EXISTS usuario_id INTEGER,
+                ADD COLUMN IF NOT EXISTS titulo VARCHAR(200),
+                ADD COLUMN IF NOT EXISTS mensaje TEXT,
+                ADD COLUMN IF NOT EXISTS leida BOOLEAN DEFAULT FALSE NOT NULL,
+                ADD COLUMN IF NOT EXISTS fecha_lectura TIMESTAMP
+            """))
+            conn.commit()
+
+            # Hacer que los campos de email sean nullable (para backwards compatibility)
+            campos_nullable = ['destinatario_email', 'destinatario_nombre', 'asunto']
+            for campo in campos_nullable:
+                try:
+                    conn.execute(text(f"""
+                        ALTER TABLE notificaciones
+                        ALTER COLUMN {campo} DROP NOT NULL
+                    """))
+                    conn.commit()
+                    print(f"✓ {campo} is now nullable")
+                except Exception as e:
+                    print(f"⚠ {campo} may already be nullable: {str(e)}")
+
+            # Crear índice en usuario_id si no existe
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_notificaciones_usuario_id
+                ON notificaciones (usuario_id)
+            """))
+            conn.commit()
+
+            # Crear índice en leida si no existe
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS ix_notificaciones_leida
+                ON notificaciones (leida)
+            """))
+            conn.commit()
+
+            # Agregar foreign key si no existe (solo para PostgreSQL)
+            try:
+                conn.execute(text("""
+                    ALTER TABLE notificaciones
+                    ADD CONSTRAINT fk_notificaciones_usuario_id
+                    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                """))
+                conn.commit()
+            except Exception:
+                # Ignorar si ya existe o no es soportado
+                pass
+
+        print("✓ Tabla de notificaciones migrada exitosamente!")
+
+    except Exception as e:
+        print(f"⚠ Error durante migración: {str(e)}")
+        print("La tabla puede ya tener las columnas necesarias.")
+
+
 @cli.command("seed-db")
 def seed_db():
     """Poblar la base de datos con datos de prueba."""

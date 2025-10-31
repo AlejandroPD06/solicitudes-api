@@ -318,10 +318,31 @@ def cambiar_estado_solicitud(solicitud_id):
     comentarios = data.get('comentarios')
     solicitud.cambiar_estado(nuevo_estado, usuario.id, comentarios)
 
+    # Crear notificación in-app ANTES del commit para que ambos cambios estén en la misma transacción
+    if nuevo_estado in ['aprobada', 'rechazada']:
+        from app.models.notificacion import Notificacion
+
+        tipo_notificacion = f'solicitud_{nuevo_estado}'
+        titulo = f'Solicitud {nuevo_estado}'
+        mensaje = f'Tu solicitud "{solicitud.titulo}" ha sido {nuevo_estado}'
+        if comentarios:
+            mensaje += f': {comentarios}'
+
+        notificacion = Notificacion(
+            tipo=tipo_notificacion,
+            usuario_id=solicitud.usuario_id,
+            titulo=titulo,
+            mensaje=mensaje,
+            solicitud_id=solicitud.id,
+            leida=False
+        )
+        db.session.add(notificacion)
+
     try:
+        # Commit único para ambos cambios (solicitud y notificación)
         db.session.commit()
 
-        # Enviar notificación por email (asíncrono)
+        # Enviar notificación por email DESPUÉS del commit exitoso (asíncrono)
         if nuevo_estado in ['aprobada', 'rechazada']:
             tipo_notificacion = f'solicitud_{nuevo_estado}'
             enviar_email_solicitud.delay(solicitud.id, tipo_notificacion)

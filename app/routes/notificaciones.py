@@ -14,14 +14,14 @@ notificaciones_bp = Blueprint('notificaciones', __name__)
 @jwt_required()
 def listar_notificaciones():
     """
-    Listar notificaciones (filtradas por usuario si no es admin).
+    Listar notificaciones (filtradas por usuario).
 
     Headers:
         - Authorization: Bearer <access_token>
 
     Query params:
         - tipo (str, opcional): Filtrar por tipo
-        - enviado (bool, opcional): Filtrar por estado de envío
+        - leida (bool, opcional): Filtrar por estado de lectura
         - solicitud_id (int, opcional): Filtrar por solicitud
         - page (int, opcional): Número de página (por defecto 1)
         - per_page (int, opcional): Items por página (por defecto 10, máximo 100)
@@ -33,33 +33,21 @@ def listar_notificaciones():
 
     # Obtener parámetros de query
     tipo = request.args.get('tipo')
-    enviado = request.args.get('enviado')
+    leida = request.args.get('leida')
     solicitud_id = request.args.get('solicitud_id', type=int)
     page = request.args.get('page', 1, type=int)
     per_page = min(request.args.get('per_page', 10, type=int), 100)
 
-    # Construir query base
-    query = Notificacion.query
-
-    # Si no es admin, solo ver notificaciones relacionadas a sus solicitudes
-    if not usuario.es_admin:
-        # Obtener IDs de solicitudes del usuario
-        solicitudes_ids = [sol.id for sol in usuario.solicitudes]
-        query = query.filter(Notificacion.solicitud_id.in_(solicitudes_ids))
+    # Construir query base - filtrar por usuario_id
+    query = Notificacion.query.filter_by(usuario_id=usuario.id)
 
     # Filtros adicionales
     if tipo:
         query = query.filter_by(tipo=tipo)
-    if enviado is not None:
-        enviado_bool = enviado.lower() in ['true', '1', 'yes']
-        query = query.filter_by(enviado=enviado_bool)
+    if leida is not None:
+        leida_bool = leida.lower() in ['true', '1', 'yes']
+        query = query.filter_by(leida=leida_bool)
     if solicitud_id:
-        # Verificar permisos para ver notificaciones de esa solicitud
-        solicitud = Solicitud.query.get(solicitud_id)
-        if not solicitud:
-            return jsonify({'error': 'Solicitud no encontrada'}), 404
-        if not usuario.es_admin and solicitud.usuario_id != usuario.id:
-            return jsonify({'error': 'No tienes permisos para ver estas notificaciones'}), 403
         query = query.filter_by(solicitud_id=solicitud_id)
 
     # Ordenar por fecha de creación (más recientes primero)
@@ -97,13 +85,49 @@ def obtener_notificacion(notificacion_id):
     if not notificacion:
         return jsonify({'error': 'Notificación no encontrada'}), 404
 
-    # Verificar permisos
-    if not usuario.es_admin:
-        solicitud = notificacion.solicitud
-        if solicitud.usuario_id != usuario.id:
-            return jsonify({'error': 'No tienes permisos para ver esta notificación'}), 403
+    # Verificar permisos - solo puede ver sus propias notificaciones
+    if notificacion.usuario_id != usuario.id:
+        return jsonify({'error': 'No tienes permisos para ver esta notificación'}), 403
 
     return jsonify({'notificacion': notificacion.to_dict(include_relations=True)}), 200
+
+
+@notificaciones_bp.route('/<int:notificacion_id>/marcar-leida', methods=['PATCH'])
+@jwt_required()
+def marcar_notificacion_leida(notificacion_id):
+    """
+    Marcar una notificación como leída.
+
+    Headers:
+        - Authorization: Bearer <access_token>
+
+    Returns:
+        200: Notificación marcada como leída
+        403: Sin permisos
+        404: Notificación no encontrada
+    """
+    usuario = obtener_usuario_actual()
+    notificacion = Notificacion.query.get(notificacion_id)
+
+    if not notificacion:
+        return jsonify({'error': 'Notificación no encontrada'}), 404
+
+    # Verificar permisos - solo puede marcar sus propias notificaciones
+    if notificacion.usuario_id != usuario.id:
+        return jsonify({'error': 'No tienes permisos para modificar esta notificación'}), 403
+
+    # Marcar como leída
+    notificacion.marcar_como_leida()
+
+    try:
+        db.session.commit()
+        return jsonify({
+            'message': 'Notificación marcada como leída',
+            'notificacion': notificacion.to_dict(include_relations=True)
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Error al marcar notificación: {str(e)}'}), 400
 
 
 @notificaciones_bp.route('/<int:notificacion_id>/reenviar', methods=['POST'])
